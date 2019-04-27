@@ -1,0 +1,3 @@
+model_checkpoint_path: "conv_unet39999.ckpt-done"
+all_model_checkpoint_paths: "conv_unet19999.ckpt-done"
+all_model_checkpoint_paths: "conv_unet39999.ckpt-done"
