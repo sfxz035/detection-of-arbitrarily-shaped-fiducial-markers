@@ -3,9 +3,11 @@ import os
 import numpy as np
 import dataset
 import networks.U_net as U_net
+from sklearn import metrics
 import matplotlib.pyplot as plt
 import scipy.io as sio
 import cv2 as cv
+from utils import metrics
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'   #指定第一块GPU可用
 config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.9  # 程序最多只能占用指定gpu50%的显存
@@ -21,11 +23,11 @@ testfile_dir = './data/data1/test/'
 input_name = 'img'
 label_name = 'recmask'
 
-x_train,y_train = dataset.get_data(trainfile_dir, input_name, label_name)
-x_test,y_test = dataset.get_data(testfile_dir, input_name, label_name)
-
-# x_train,y_train = dataset.get_data(trainfile_dir, input_name, label_name,sample_num=148,is_test=True)
-# x_test,y_test = dataset.get_data(testfile_dir, input_name, label_name,sample_num=148,is_test=True)
+# x_train,y_train = dataset.get_data(trainfile_dir, input_name, label_name)
+# x_test,y_test = dataset.get_data(testfile_dir, input_name, label_name)
+#
+x_train,y_train = dataset.get_data(trainfile_dir, input_name, label_name,sample_num=148,is_test=True)
+x_test,y_test = dataset.get_data(testfile_dir, input_name, label_name,sample_num=148,is_test=True)
 
 # x_train,x_test = dataset.norm(x_train,x_test,version=2)
 # y_train,y_test = dataset.norm(y_train,y_test,version=2)
@@ -86,23 +88,66 @@ def train():
                 saver.save(sess, os.path.join(savenet_path, 'conv_unet%d.ckpt-done' % (count)))
 
 def test():
-    index = 99
-    inputTrain = x_train[index:index+1,:,:,:]
-    labelTrain = y_train[index:index+1,:,:,:]
-    inputTest = x_test[index:index+1,:,:,:]
-    labelTest = y_test[index:index+1,:,:,:]
-    # cv.namedWindow('input_image',0)
+
+    # ####----------------指定文件
+    # test_path = 'E:/code/segment/data/data1/train/data.7.60.npz'
+    # datatest = np.load(test_path)
+    # img = datatest[input_name]
+    # label = datatest[label_name]
+    #
+    # inputTest = np.expand_dims(img, 0)
+    # labelTest = np.expand_dims(label, -1)
+    # labelTest = np.expand_dims(labelTest, 0)
+    # savepath = 'E:\code\segment\libSaveNet\save_unet\conv_unet159999.ckpt-done'
+    # x = tf.placeholder(tf.float32,shape = [1,1024,1024, 3])
+    # y_ = tf.placeholder(tf.float32,shape = [1,1024,1024,1])
+    # y = U_net.inference(x,is_training=True)
+    # loss = tf.reduce_mean(tf.square(y - y_))
+    # variables_to_restore = []
+    # for v in tf.global_variables():
+    #     variables_to_restore.append(v)
+    # saver = tf.train.Saver(variables_to_restore, write_version=tf.train.SaverDef.V2, max_to_keep=None)
+    # tf.global_variables_initializer().run()
+    # saver.restore(sess, savepath)
+    # output = sess.run(y,feed_dict={x: inputTest,y_: labelTest})
+    # loss_test = sess.run(loss, feed_dict={x: inputTest, y_: labelTest})
+    # print('loss_train: %g' % (loss_test))
+    # # -------imshow()
+    # img = np.squeeze(inputTest).astype(np.uint8)
+    # out = np.squeeze(output).astype(np.uint8)
+    # label = label.astype(np.uint8)
+    # # out = ~out
+    # ca = label - out
+    # masked = cv.bitwise_and(img, img, mask=out)
+    # cv.namedWindow('input_image', 0)
     # cv.resizeWindow('input_image', 500, 500)
-    # cv.imshow('input_image',inputTest[0,:,:,:])
-    # cv.namedWindow('mask',0)
-    # cv.resizeWindow('mask', 500, 500)
-    # cv.imshow('mask',labelTest[0,:,:])
+    # cv.imshow('input_image', img)
+    # cv.namedWindow('label', 0)
+    # cv.resizeWindow('label', 500, 500)
+    # cv.imshow('label', label)
+    # cv.namedWindow('output', 0)
+    # cv.resizeWindow('output', 500, 500)
+    # cv.imshow('output', out)
+    # cv.namedWindow('ca', 0)
+    # cv.resizeWindow('ca', 500, 500)
+    # cv.imshow('ca', ca)
+    # cv.namedWindow('imgmask', 0)
+    # cv.resizeWindow('imgmask', 500, 500)
+    # cv.imshow('imgmask', masked)
     # cv.waitKey(0)
     # cv.destroyAllWindows()
-    savepath = 'E:\code\segment\libSaveNet\save_unet\conv_unet39999.ckpt-done'
+
+
+
+
+    ###------------------数据集
+
+    # correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
+    # accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+    savepath = 'E:\code\segment\libSaveNet\save_unet\conv_unet159999.ckpt-done'
     x = tf.placeholder(tf.float32,shape = [1,1024,1024, 3])
     y_ = tf.placeholder(tf.float32,shape = [1,1024,1024,1])
-    y = U_net.inference(x)
+    y = U_net.inference(x,is_training=True)
     loss = tf.reduce_mean(tf.square(y - y_))
     variables_to_restore = []
     for v in tf.global_variables():
@@ -110,34 +155,52 @@ def test():
     saver = tf.train.Saver(variables_to_restore, write_version=tf.train.SaverDef.V2, max_to_keep=None)
     tf.global_variables_initializer().run()
     saver.restore(sess, savepath)
-    output = sess.run(y,feed_dict={x: inputTest,y_: labelTest})
-    loss_test = sess.run(loss, feed_dict={x: inputTest, y_: labelTest})
-    print('loss_train: %g' % (loss_test))
-
-    img = x_test[index, :, :, :]
-    label = y_test[index, :, :, 0]
-    out = output[0, :, :, 0].astype(np.uint8)
-    # out = ~out
-    ca = label - out
-    masked = cv.bitwise_and(img, img, mask=out)
-    cv.namedWindow('input_image',0)
-    cv.resizeWindow('input_image', 500, 500)
-    cv.imshow('input_image',img)
-    cv.namedWindow('label',0)
-    cv.resizeWindow('label', 500, 500)
-    cv.imshow('label',label)
-    cv.namedWindow('output',0)
-    cv.resizeWindow('output', 500, 500)
-    cv.imshow('output',out)
-    cv.namedWindow('ca',0)
-    cv.resizeWindow('ca', 500, 500)
-    cv.imshow('ca',ca)
-    cv.namedWindow('imgmask',0)
-    cv.resizeWindow('imgmask', 500, 500)
-    cv.imshow('imgmask',masked)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
-
+    nub = np.shape(x_test)[0]
+    predic = []
+    for i in range(nub):
+        # inputTrain = x_train[index:index+1,:,:,:]
+        # labelTrain = y_train[index:index+1,:,:,:]
+        inputTest = x_test[i:i + 1, :, :, :]
+        labelTest = y_test[i:i + 1, :, :, :]
+        output = sess.run(y,feed_dict={x: inputTest,y_: labelTest})
+        out = np.squeeze(output)
+        label = np.squeeze(labelTest)
+        iou = metrics.Iou(out, label, threvalu=200)
+        iou = iou.eval()
+        loss_test = sess.run(loss, feed_dict={x: inputTest, y_: labelTest})
+        print(i)
+        print('loss_train: %g' % (loss_test), "\t",'iou: %g' % iou)
+        if iou>0.5:
+            predic.append(1)
+        else:
+            predic.append(0)
+        # #-------imshow()
+        # img = np.squeeze(inputTest).astype(np.uint8)
+        # out = out.astype(np.uint8)
+        # label = label.astype(np.uint8)
+        # # out = ~out
+        # ca = label - out
+        # masked = cv.bitwise_and(img, img, mask=out)
+        # cv.namedWindow('input_image',0)
+        # cv.resizeWindow('input_image', 500, 500)
+        # cv.imshow('input_image',img)
+        # cv.namedWindow('label',0)
+        # cv.resizeWindow('label', 500, 500)
+        # cv.imshow('label',label)
+        # cv.namedWindow('output',0)
+        # cv.resizeWindow('output', 500, 500)
+        # cv.imshow('output',out)
+        # cv.namedWindow('ca',0)
+        # cv.resizeWindow('ca', 500, 500)
+        # cv.imshow('ca',ca)
+        # cv.namedWindow('imgmask',0)
+        # cv.resizeWindow('imgmask', 500, 500)
+        # cv.imshow('imgmask',masked)
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
+    pos = predic.count(1)
+    precision = pos/nub
+    print(precision)
 if __name__ == '__main__':
     # train()
     test()

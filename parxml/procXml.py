@@ -7,7 +7,7 @@ def generadata(readpath,writepath):
     indexPatient = -1
     # a = os.listdir(readpath)
     for file1 in os.listdir(readpath):
-        # file1 = a[14]
+        # file1 = a[7]
         file_dir = readpath+file1+'/'
         file_name = []
         indexPatient += 1
@@ -15,13 +15,13 @@ def generadata(readpath,writepath):
             file_name.append(file_dir + file2)
         nubFile = len(file_name)
         for i in range(nubFile//2):
-            # i = 68
+            # i = 60
             path1 = file_name[i*2]
             path2 = file_name[i*2+1]
             img = cv.imread(path1)
             img_shape = np.shape(img)
             mask, areaList = prcxml(path2,img_shape)
-            np.savez(writepath+str(indexPatient)+'.'+str(i)+'.npz',img=img,recmask=mask,areaList=areaList)
+            # np.savez(writepath+str(indexPatient)+'.'+str(i)+'.npz',img=img,recmask=mask,areaList=areaList)
 
 def prcxml(xmlPath,im_shape):
     dom = xml.dom.minidom.parse(xmlPath)
