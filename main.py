@@ -7,7 +7,7 @@ from sklearn import metrics
 import matplotlib.pyplot as plt
 import scipy.io as sio
 import cv2 as cv
-from utils import metrics
+from utils import evalu
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'   #指定第一块GPU可用
 config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.9  # 程序最多只能占用指定gpu50%的显存
@@ -156,29 +156,33 @@ def test():
     tf.global_variables_initializer().run()
     saver.restore(sess, savepath)
     nub = np.shape(x_test)[0]
-    predic = []
+    predicList = []
     for i in range(nub):
         # inputTrain = x_train[index:index+1,:,:,:]
         # labelTrain = y_train[index:index+1,:,:,:]
         inputTest = x_test[i:i + 1, :, :, :]
         labelTest = y_test[i:i + 1, :, :, :]
         output = sess.run(y,feed_dict={x: inputTest,y_: labelTest})
-        out = np.squeeze(output)
-        label = np.squeeze(labelTest)
-        iou = metrics.Iou(out, label, threvalu=200)
-        iou = iou.eval()
         loss_test = sess.run(loss, feed_dict={x: inputTest, y_: labelTest})
+        # print('loss: %g' % (loss_test))
+
+        ##### 评价指标
+        out = np.squeeze(output).astype(np.uint8)
+        label = np.squeeze(labelTest).astype(np.uint8)
+        img = np.squeeze(inputTest).astype(np.uint8)
+        predic,iouList = evalu.calcu(out,label)
+        for j in range(len(predic)):
+            predicList.append(predic[j])
         print(i)
-        print('loss_train: %g' % (loss_test), "\t",'iou: %g' % iou)
-        if iou>0.5:
-            predic.append(1)
-        else:
-            predic.append(0)
+        print('loss: %g' % (loss_test),iouList)
+    pos = predicList.count(1)
+    precision = pos / nub
+    print(precision)
         # #-------imshow()
+        # out = ~out
+        # out = np.squeeze(output).astype(np.uint8)
+        # label = np.squeeze(labelTest).astype(np.uint8)
         # img = np.squeeze(inputTest).astype(np.uint8)
-        # out = out.astype(np.uint8)
-        # label = label.astype(np.uint8)
-        # # out = ~out
         # ca = label - out
         # masked = cv.bitwise_and(img, img, mask=out)
         # cv.namedWindow('input_image',0)
@@ -198,9 +202,7 @@ def test():
         # cv.imshow('imgmask',masked)
         # cv.waitKey(0)
         # cv.destroyAllWindows()
-    pos = predic.count(1)
-    precision = pos/nub
-    print(precision)
+
 if __name__ == '__main__':
     # train()
     test()

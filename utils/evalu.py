@@ -1,7 +1,8 @@
 import tensorflow as tf
 import sklearn as sk
 import numpy as np
-
+import cv2 as cv
+import matplotlib.pyplot as plt
 
 def dice_coef_theoretical(y_pred, y_true,threvalu=0.5):
     """Define the dice coefficient
@@ -27,7 +28,6 @@ def dice_coef_theoretical(y_pred, y_true,threvalu=0.5):
     return dice
 
 def pix_RePre(y_pred, y_true,threvalu=0.5):
-    # y_true = (y_true-np.min(y_true))/(np.max(y_true)-np.min(y_true))
     y_true_f = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
     # y_pred_f = tf.cast(tf.greater(y_pred, threvalu), tf.float32)
     y_pred_f = tf.cast(tf.reshape(y_pred, [-1]), tf.float32)
@@ -38,8 +38,8 @@ def pix_RePre(y_pred, y_true,threvalu=0.5):
     recall = intersection/P
     precison = intersection/P_pre
 
-    return recall/255,precison/255
-def Iou(y_pred,y_true,threvalu=0.5):
+    return recall,precison
+def Iou_tf(y_pred,y_true,threvalu=0.5):
     ### 1
     # y_true = (y_true-np.min(y_true))/(np.max(y_true)-np.min(y_true))
     # y_true = tf.cast(y_true,tf.bool)
@@ -52,16 +52,70 @@ def Iou(y_pred,y_true,threvalu=0.5):
     ####2
     y_true_f = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
     y_pred_f = tf.cast(tf.reshape(y_pred, [-1]), tf.float32)
-    intersection = tf.reduce_sum(y_true_f * y_pred_f)/255
+    intersection = tf.reduce_sum(y_true_f * y_pred_f)
     union = tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f)-intersection
-
 
     iou = intersection/union
     if (tf.reduce_sum(y_pred) == 0) and (tf.reduce_sum(y_true) == 0):
         iou = 1
     return iou
+def Iou_np(y_pred,y_true):
+    y_true_f = np.reshape(y_true,[-1]).astype(np.float32)
+    y_pred_f = np.reshape(y_pred,[-1]).astype(np.float32)
+    intersection = np.sum(y_pred_f*y_true_f)
+    union = np.sum(y_true_f)+np.sum(y_pred_f)-intersection
 
+    iou = intersection/union
+    if(np.sum(y_pred)==0)and(np.sum(y_true==0)):
+        iou=1
+    return iou
 
+def connectComp(img):
+    imgPre = np.greater(img, 200)
+    imgPre = imgPre.astype(np.uint8)
+    ret, labels, stats, centroids = cv.connectedComponentsWithStats(imgPre, connectivity=8)
+    # plt.imshow(labels)
+    # plt.show()
+    # cv.namedWindow('imgmask', 0)
+    # cv.resizeWindow('imgmask', 500, 500)
+    # cv.imshow('imgmask', imgPre)
+    # cv.waitKey(0)
+    # plt.imshow(labels)
+    # plt.show()
+
+    ####  滤除掉像素点极少的区域，输出区域数组
+    rect_squence = []
+    for i in range(ret-1):
+        mask = (labels==i+1)
+        # ### 1.索引找不同类别的像素个数
+        # arr = labels[mask]
+        # area = arr.size
+        #--------------
+        ### 2.stats 取出area面积
+        area = stats[i+1][-1]
+        if area > 10:
+            rect_squence.append(mask)
+    rect = np.asarray(rect_squence)
+    return rect
+def calcu(y_pre,y_ture):
+    arrArea_pre = connectComp(y_pre)
+    arrArea_true = connectComp(y_ture)
+    nub = np.shape(arrArea_true)[0]
+    nub2 = np.shape(arrArea_pre)[0]
+    if nub != nub2:
+        print('nub != nub2')
+    predic = []
+    iouList = []
+    for i in range(nub):
+        area_true = arrArea_true[i]
+        area_pre = arrArea_pre[i]
+        iou = Iou_np(area_pre,area_true)
+        iouList.append(iou)
+        if iou >0.5:
+            predic.append(1)
+        else:
+            predic.append(0)
+    return predic,iouList
 
 # def nub_RePre(y_pred,y_ture):
 
