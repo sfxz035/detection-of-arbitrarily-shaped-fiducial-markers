@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 import cv2 as cv
 from utils import evalu
+from utils import postproce
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'   #指定第一块GPU可用
 config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.9  # 程序最多只能占用指定gpu50%的显存
@@ -156,8 +157,14 @@ def test():
     tf.global_variables_initializer().run()
     saver.restore(sess, savepath)
     nub = np.shape(x_test)[0]
+    mub = np.random.randint(0,nub,10)
     predicList = []
     for i in range(nub):
+    # for i in mub:
+        # i =67
+        # i = 111   #多出来
+        # i = 131  ###！！！！iou不符合
+        # i = 145
         # inputTrain = x_train[index:index+1,:,:,:]
         # labelTrain = y_train[index:index+1,:,:,:]
         inputTest = x_test[i:i + 1, :, :, :]
@@ -166,17 +173,41 @@ def test():
         loss_test = sess.run(loss, feed_dict={x: inputTest, y_: labelTest})
         # print('loss: %g' % (loss_test))
 
-        ##### 评价指标
+
         out = np.squeeze(output).astype(np.uint8)
         label = np.squeeze(labelTest).astype(np.uint8)
         img = np.squeeze(inputTest).astype(np.uint8)
-        predic,iouList = evalu.calcu(out,label)
+
+        kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))  # 定义结构元素
+        outclosing = cv.morphologyEx(out, cv.MORPH_CLOSE, kernel)  # 闭运算
+        ##### 框出目标区域——————————————————
+        postproce.contourmask(img,outclosing)
+        # cv.namedWindow('imgrec',0)
+        # cv.resizeWindow('imgrec', 500, 500)
+        # cv.imshow('imgrec',img)
+        # cv.namedWindow('label',0)
+        # cv.resizeWindow('label', 500, 500)
+        # cv.imshow('label',label)
+        # cv.namedWindow('output',0)
+        # cv.resizeWindow('output', 500, 500)
+        # cv.imshow('output',outclosing)
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
+        ##### 评价指标——————————————————————
+
+        # plt.imshow(out)
+        # plt.show()
+        # plt.imshow(outclosing)
+        # plt.show()
+        # plt.imshow(label)
+        # plt.show()
+        predic,iouList = evalu.calcu(outclosing,label)
         for j in range(len(predic)):
             predicList.append(predic[j])
         print(i)
         print('loss: %g' % (loss_test),iouList)
     pos = predicList.count(1)
-    precision = pos / nub
+    precision = pos / len(predicList)
     print(precision)
         # #-------imshow()
         # out = ~out
@@ -185,24 +216,6 @@ def test():
         # img = np.squeeze(inputTest).astype(np.uint8)
         # ca = label - out
         # masked = cv.bitwise_and(img, img, mask=out)
-        # cv.namedWindow('input_image',0)
-        # cv.resizeWindow('input_image', 500, 500)
-        # cv.imshow('input_image',img)
-        # cv.namedWindow('label',0)
-        # cv.resizeWindow('label', 500, 500)
-        # cv.imshow('label',label)
-        # cv.namedWindow('output',0)
-        # cv.resizeWindow('output', 500, 500)
-        # cv.imshow('output',out)
-        # cv.namedWindow('ca',0)
-        # cv.resizeWindow('ca', 500, 500)
-        # cv.imshow('ca',ca)
-        # cv.namedWindow('imgmask',0)
-        # cv.resizeWindow('imgmask', 500, 500)
-        # cv.imshow('imgmask',masked)
-        # cv.waitKey(0)
-        # cv.destroyAllWindows()
-
 if __name__ == '__main__':
     # train()
     test()

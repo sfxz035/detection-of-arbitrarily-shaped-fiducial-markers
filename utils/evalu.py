@@ -3,7 +3,7 @@ import sklearn as sk
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
-
+from utils.postproce import *
 def dice_coef_theoretical(y_pred, y_true,threvalu=0.5):
     """Define the dice coefficient
         Args:
@@ -70,54 +70,34 @@ def Iou_np(y_pred,y_true):
         iou=1
     return iou
 
-def connectComp(img):
-    imgPre = np.greater(img, 200)
-    imgPre = imgPre.astype(np.uint8)
-    ret, labels, stats, centroids = cv.connectedComponentsWithStats(imgPre, connectivity=8)
-    # plt.imshow(labels)
-    # plt.show()
-    # cv.namedWindow('imgmask', 0)
-    # cv.resizeWindow('imgmask', 500, 500)
-    # cv.imshow('imgmask', imgPre)
-    # cv.waitKey(0)
-    # plt.imshow(labels)
-    # plt.show()
-
-    ####  滤除掉像素点极少的区域，输出区域数组
-    rect_squence = []
-    for i in range(ret-1):
-        mask = (labels==i+1)
-        # ### 1.索引找不同类别的像素个数
-        # arr = labels[mask]
-        # area = arr.size
-        #--------------
-        ### 2.stats 取出area面积
-        area = stats[i+1][-1]
-        if area > 10:
-            rect_squence.append(mask)
-    rect = np.asarray(rect_squence)
-    return rect
 def calcu(y_pre,y_ture):
     arrArea_pre = connectComp(y_pre)
     arrArea_true = connectComp(y_ture)
-    nub = np.shape(arrArea_true)[0]
+    nub1 = np.shape(arrArea_true)[0]
     nub2 = np.shape(arrArea_pre)[0]
-    if nub != nub2:
+    if nub1 != nub2:
         print('nub != nub2')
+        nub = max(nub1,nub2)
+    else:
+        nub = nub1
     predic = []
     iouList = []
     for i in range(nub):
         area_true = arrArea_true[i]
         area_pre = arrArea_pre[i]
+        # plt.imshow(area_true)
+        # plt.show()
+        # plt.imshow(area_pre)
+        # plt.show()
         iou = Iou_np(area_pre,area_true)
         iouList.append(iou)
-        if iou >0.5:
+        if iou >0.6:
             predic.append(1)
         else:
             predic.append(0)
+            print('0!!!!!!!!!!!')
     return predic,iouList
 
-# def nub_RePre(y_pred,y_ture):
 
 #### 待处理
 def tf_confusion_metrics(predict, real, session, feed_dict):
