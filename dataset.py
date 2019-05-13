@@ -42,8 +42,8 @@ def random_batch(x_data,y_data,batch_size):
 def norm(data_train,data_test,version):
     if version == 1:
         ## 1.自定义max-min归一化
-        train_max = np.max(abs(data_train))
-        train_min = np.min(abs(data_train))
+        train_max = np.max(data_train)
+        train_min = np.min(data_train)
 
         train_norm = (data_train -train_min)/ (train_max - train_min)
         test_norm = (data_test -train_min)/ (train_max - train_min)

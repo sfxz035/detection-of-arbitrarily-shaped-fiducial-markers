@@ -28,7 +28,7 @@ def connectComp(img):
         #--------------
         ### 2.stats 取出area面积
         area = stats[i+1][-1]
-        if area > 25:
+        if area > 30:
             # plt.imshow(mask)
             # plt.show()
             rect_squence.append(mask)
@@ -61,12 +61,9 @@ def contourmask(img,mask):
     for i in range(0, len(contours)):
         x, y, w, h = cv.boundingRect(contours[i])
         cv.rectangle(img, (x, y), (x + w, y + h), (153, 153, 0), 1)
+        cv.namedWindow('imgmask', 0)
+        cv.resizeWindow('imgmask', 500, 500)
+        cv.imshow('imgmask', img)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
 
-    # plt.imshow(mask)
-    # plt.show()
-    #
-    # cv.namedWindow('imgmask',0)
-    # cv.resizeWindow('imgmask', 500, 500)
-    # cv.imshow('imgmask',img)
-    # cv.waitKey(0)
-    # cv.destroyAllWindows()

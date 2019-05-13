@@ -75,6 +75,8 @@ def calcu(y_pre,y_ture):
     arrArea_true = connectComp(y_ture)
     nub1 = np.shape(arrArea_true)[0]
     nub2 = np.shape(arrArea_pre)[0]
+    # if nub1==1 and nub2 == 0:
+    #     return 1,10000
     if nub1 != nub2:
         print('nub != nub2')
         nub = max(nub1,nub2)
@@ -83,19 +85,22 @@ def calcu(y_pre,y_ture):
     predic = []
     iouList = []
     for i in range(nub):
-        area_true = arrArea_true[i]
-        area_pre = arrArea_pre[i]
-        # plt.imshow(area_true)
-        # plt.show()
-        # plt.imshow(area_pre)
-        # plt.show()
-        iou = Iou_np(area_pre,area_true)
-        iouList.append(iou)
-        if iou >0.6:
-            predic.append(1)
-        else:
-            predic.append(0)
-            print('0!!!!!!!!!!!')
+        try:
+            area_true = arrArea_true[i]
+            area_pre = arrArea_pre[i]
+            # plt.imshow(area_true)
+            # plt.show()
+            # plt.imshow(area_pre)
+            # plt.show()
+            iou = Iou_np(area_pre,area_true)
+            iouList.append(iou)
+            if iou >0.5:
+                predic.append(1)
+            else:
+                predic.append(0)
+                print('0!!!!!!!!!!!')
+        except(IndexError):
+            return -1,-1
     return predic,iouList
 
 

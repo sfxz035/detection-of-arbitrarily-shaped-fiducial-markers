@@ -16,9 +16,9 @@ config.gpu_options.allow_growth = True      #程序按需申请内存
 sess = tf.InteractiveSession(config = config)
 
 epoch = 2000000
-batch_size = 8
+batch_size = 1
 learning_rate = 0.0001
-savenet_path = './libSaveNet/save_unet/'
+savenet_path = './libSaveNet/save_unetz/'
 trainfile_dir = './data/data1/train/'
 testfile_dir = './data/data1/test/'
 input_name = 'img'
@@ -145,9 +145,9 @@ def test():
 
     # correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
     # accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-    savepath = 'E:\code\segment\libSaveNet\save_unet\conv_unet159999.ckpt-done'
-    x = tf.placeholder(tf.float32,shape = [1,1024,1024, 3])
-    y_ = tf.placeholder(tf.float32,shape = [1,1024,1024,1])
+    savepath = 'E:\code\segment\libSaveNet\save_unet\conv_unet79999.ckpt-done'
+    x = tf.placeholder(tf.float32,shape = [batch_size,1024,1024, 3])
+    y_ = tf.placeholder(tf.float32,shape = [batch_size,1024,1024,1])
     y = U_net.inference(x,is_training=True)
     loss = tf.reduce_mean(tf.square(y - y_))
     variables_to_restore = []
@@ -156,20 +156,27 @@ def test():
     saver = tf.train.Saver(variables_to_restore, write_version=tf.train.SaverDef.V2, max_to_keep=None)
     tf.global_variables_initializer().run()
     saver.restore(sess, savepath)
+    # nub = np.shape(x_train)[0]
     nub = np.shape(x_test)[0]
     mub = np.random.randint(0,nub,10)
     predicList = []
+    ycList = []
     for i in range(nub):
     # for i in mub:
+        i = 84
         # i =67
+        # i = 39
         # i = 111   #多出来
         # i = 131  ###！！！！iou不符合
         # i = 145
-        # inputTrain = x_train[index:index+1,:,:,:]
-        # labelTrain = y_train[index:index+1,:,:,:]
-        inputTest = x_test[i:i + 1, :, :, :]
-        labelTest = y_test[i:i + 1, :, :, :]
-        output = sess.run(y,feed_dict={x: inputTest,y_: labelTest})
+        # i = 133
+        ## train
+        # i = 612
+        inputTest = x_train[i:i+1,:,:,:]
+        labelTest = y_train[i:i+1,:,:,:]
+        # inputTest = x_test[i:i + 1, :, :, :]
+        # labelTest = y_test[i:i + 1, :, :, :]
+        output = sess.run(y,feed_dict={x: inputTest})
         loss_test = sess.run(loss, feed_dict={x: inputTest, y_: labelTest})
         # print('loss: %g' % (loss_test))
 
@@ -180,19 +187,23 @@ def test():
 
         kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))  # 定义结构元素
         outclosing = cv.morphologyEx(out, cv.MORPH_CLOSE, kernel)  # 闭运算
+        # cv.namedWindow('output', 0)
+        # cv.resizeWindow('output', 500, 500)
+        # cv.imshow('output', out)
+        # cv.waitKey(0)
         ##### 框出目标区域——————————————————
         postproce.contourmask(img,outclosing)
-        # cv.namedWindow('imgrec',0)
-        # cv.resizeWindow('imgrec', 500, 500)
-        # cv.imshow('imgrec',img)
-        # cv.namedWindow('label',0)
-        # cv.resizeWindow('label', 500, 500)
-        # cv.imshow('label',label)
-        # cv.namedWindow('output',0)
-        # cv.resizeWindow('output', 500, 500)
-        # cv.imshow('output',outclosing)
-        # cv.waitKey(0)
-        # cv.destroyAllWindows()
+        cv.namedWindow('imgrec',0)
+        cv.resizeWindow('imgrec', 500, 500)
+        cv.imshow('imgrec',img)
+        cv.namedWindow('label',0)
+        cv.resizeWindow('label', 500, 500)
+        cv.imshow('label',label)
+        cv.namedWindow('output',0)
+        cv.resizeWindow('output', 500, 500)
+        cv.imshow('output',outclosing)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
         ##### 评价指标——————————————————————
 
         # plt.imshow(out)
@@ -201,13 +212,20 @@ def test():
         # plt.show()
         # plt.imshow(label)
         # plt.show()
+
         predic,iouList = evalu.calcu(outclosing,label)
-        for j in range(len(predic)):
-            predicList.append(predic[j])
-        print(i)
-        print('loss: %g' % (loss_test),iouList)
+        if predic==-1 and iouList==-1:
+            print('loss: %g, wrong index：%g' % (loss_test,i))
+            ycList.append(i)
+        else:
+            for j in range(len(predic)):
+                predicList.append(predic[j])
+            print(i)
+            print('loss: %g' % (loss_test),iouList)
     pos = predicList.count(1)
+    all = len(predicList)
     precision = pos / len(predicList)
+    print('1-nub: %g, all nub：%g' % (pos,all))
     print(precision)
         # #-------imshow()
         # out = ~out
