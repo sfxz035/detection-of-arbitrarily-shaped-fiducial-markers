@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 
 def connectComp(img):
+    ## 针对255峰值
     imgPre = np.greater(img, 200)
     imgPre = imgPre.astype(np.uint8)
     ret, labels, stats, centroids = cv.connectedComponentsWithStats(imgPre, connectivity=8)
@@ -45,7 +46,7 @@ def filterFewPoint(mask):
     for i in range(ret-1):
         maskzj = (labels==i+1)
         area = stats[i+1][-1]
-        if area < 25:
+        if area < 30:
             # plt.imshow(maskzj)
             # plt.show()
             labels[maskzj] = 0
@@ -57,13 +58,8 @@ def filterFewPoint(mask):
 def contourmask(img,mask):
     maskFilt = filterFewPoint(mask)
     maskFilt = maskFilt.astype(np.uint8)
-    contours, hierarchy = cv.findContours(maskFilt, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv.findContours(maskFilt, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     for i in range(0, len(contours)):
         x, y, w, h = cv.boundingRect(contours[i])
         cv.rectangle(img, (x, y), (x + w, y + h), (153, 153, 0), 1)
-        cv.namedWindow('imgmask', 0)
-        cv.resizeWindow('imgmask', 500, 500)
-        cv.imshow('imgmask', img)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
 

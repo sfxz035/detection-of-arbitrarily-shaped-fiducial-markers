@@ -12,8 +12,7 @@ def dice_coef_theoretical(y_pred, y_true,threvalu=0.5):
         Returns:
         Dice coefficient
         """
-    # y_true = (y_true-np.min(y_true))/(np.max(y_true)-np.min(y_true))
-    # y_pred = (y_pred-np.min(y_pred))/(np.max(y_pred)-np.min(y_pred))
+
     y_true_f = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
     y_pred_f = tf.nn.sigmoid(y_pred)
     # y_pred_f = tf.cast(tf.greater(y_pred_f, threvalu), tf.float32)
@@ -94,7 +93,7 @@ def calcu(y_pre,y_ture):
             # plt.show()
             iou = Iou_np(area_pre,area_true)
             iouList.append(iou)
-            if iou >0.5:
+            if iou >0.4:
                 predic.append(1)
             else:
                 predic.append(0)
