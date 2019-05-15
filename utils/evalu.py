@@ -102,7 +102,52 @@ def calcu(y_pre,y_ture):
             return -1,-1
     return predic,iouList
 
+def calcu2(y_pre,y_ture):
+    maskFilt_pre = filterFewPoint(y_pre)
+    maskFilt_pre = maskFilt_pre.astype(np.uint8)
+    contours_pre, hierarchy_pre = cv.findContours(maskFilt_pre, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    maskFilt_true = filterFewPoint(y_ture)
+    maskFilt_true = maskFilt_true.astype(np.uint8)
+    contours_true, hierarchy_true = cv.findContours(maskFilt_true, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    nub1,nub2 = len(contours_pre),len(contours_true)
+    if nub1 != nub2:
+        print('nub != nub2')
+        nub = max(nub1,nub2)
+    else:
+        nub = nub1
+    predic = []
+    iouList = []
+    for i in range(0, nub):
+        try:
+            x1L, y1L, w1, h1 = cv.boundingRect(contours_pre[i])
+            x1R, y1R = x1L+w1, y1L+h1
+            x2L, y2L, w2, h2 = cv.boundingRect(contours_true[i])
+            x2R, y2R = x2L+w2, y2L+h2
+            xL,yL = max(x1L,x2L),max(y1L,y2L)
+            xR,yR = min(x1R,x2R),min(y1R,y2R)
+            intersection1 = max(xR-xL,0)
+            intersection2 = max(yR-yL,0)
+            inter = intersection1*intersection2
 
+            # mask = np.zeros([1024, 1024], dtype='uint8')
+            # cv.rectangle(mask, (x1L, y1L), (x1R, y1R), (153, 153, 0), 1)
+            # cv.rectangle(mask, (x2L, y2L), (x2R, y2R), (153, 153, 0), 1)
+            # cv.namedWindow('imgrec',0)
+            # cv.resizeWindow('imgrec', 500, 500)
+            # cv.imshow('imgrec',mask)
+            # cv.waitKey(0)
+
+            union_square = w1*h1+w2*h2-inter
+            iou = inter/union_square
+            iouList.append(iou)
+            if iou >0.4:
+                predic.append(1)
+            else:
+                predic.append(0)
+                print('0!!!!!!!!!!!')
+        except(IndexError):
+            return -1,-1
+    return predic,iouList
 #### 待处理
 def tf_confusion_metrics(predict, real, session, feed_dict):
     predictions = tf.argmax(predict, 1)
@@ -164,38 +209,5 @@ def tf_confusion_metrics(predict, real, session, feed_dict):
     precision = float(tp) / (float(tp) + float(fp))
 
     f1_score = (2 * (precision * recall)) / (precision + recall)
-# tf_confusion_metrics(y, realLabel, sess, feed_dict={predict: predictLabel , real:test_y})
-# predictLabel = tf.constant(y)
-# predictLabel =  predictLabel.eval()         # 将tensor转为ndarray
-# realLabel = tf.convert_to_tensor(test_y)    # 将ndarray转为tensor
-# tf_confusion_metrics(y, realLabel, sess, feed_dict={predict: predictLabel , real:test_y})
-# def sk_Mertrics():
-    # pred = multilayer_perceptron(x, weights, biases)
-    # correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
-    # accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-    #
-    # with tf.Session() as sess:
-    #     init = tf.initialize_all_variables()
-    # sess.run(init)
-    # for epoch in range(150):
-    #     for i in range(total_batch):
-    #         train_step.run(feed_dict={x: train_arrays, y: train_labels})
-    #         avg_cost += sess.run(cost, feed_dict={x: train_arrays, y: train_labels}) / total_batch
-    #     if epoch % display_step == 0:
-    #         print("Epoch:", '%04d' % (epoch + 1), "cost=", "{:.9f}".format(avg_cost))
-    #
-    # # metrics
-    # y_p = tf.argmax(pred, 1)
-    # val_accuracy, y_pred = sess.run([accuracy, y_p], feed_dict={x: test_arrays, y: test_label})
-    #
-    # print("validation accuracy:", val_accuracy)
-    # y_true = np.argmax(test_label, 1)
-    # print("Precision", sk.metrics.precision_score(y_true, y_pred))
-    # print("Recall", sk.metrics.recall_score(y_true, y_pred))
-    # print("f1_score", sk.metrics.f1_score(y_true, y_pred))
-    # print("confusion_matrix")
-    # print(sk.metrics.confusion_matrix(y_true, y_pred))
-    # fpr, tpr, tresholds = sk.metrics.roc_curve(y_true, y_pred)
-    # fpr, tpr, tresholds = sk.metrics.roc_curve(y_true, y_pred)
 
 

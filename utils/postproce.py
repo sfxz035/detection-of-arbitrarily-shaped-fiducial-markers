@@ -29,7 +29,7 @@ def connectComp(img):
         #--------------
         ### 2.stats 取出area面积
         area = stats[i+1][-1]
-        if area > 30:
+        if area >= 27:
             # plt.imshow(mask)
             # plt.show()
             rect_squence.append(mask)
@@ -46,14 +46,17 @@ def filterFewPoint(mask):
     for i in range(ret-1):
         maskzj = (labels==i+1)
         area = stats[i+1][-1]
-        if area < 30:
+        if area < 19:
             # plt.imshow(maskzj)
             # plt.show()
             labels[maskzj] = 0
             # plt.imshow(labels)
             # plt.show()
         else:
+            # plt.imshow(maskzj)
+            # plt.show()
             labels[maskzj] = 255
+
     return labels
 def contourmask(img,mask):
     maskFilt = filterFewPoint(mask)
