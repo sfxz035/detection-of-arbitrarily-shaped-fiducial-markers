@@ -27,7 +27,8 @@ def load(file_path):
     # img = (image_minmax*255).astype(np.uint8)
     # img = cv.cvtColor(img,cv.COLOR_GRAY2BGR)
     ## 映射到0，1
-    image_maxmin = (image-np.min(image))/(np.max(image)-np.min(image))
+    image_maxmin = image/(256*256)
+
     print('convert done')
 
     return image_maxmin
