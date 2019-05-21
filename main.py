@@ -3,10 +3,13 @@ import os
 import numpy as np
 import dataset
 import networks.U_net as U_net
+import networks.U_net2 as U_net2
+
 from sklearn import metrics
 import matplotlib.pyplot as plt
 import scipy.io as sio
 import cv2 as cv
+from utils import losses
 from utils import evalu
 from utils import postproce
 # import parxml.read as read
@@ -20,16 +23,16 @@ epoch = 2000000
 batch_size = 8
 learning_rate = 0.0001
 savenet_path = './libSaveNet/save_unet/'
-trainfile_dir = './data/data4/train/'
-testfile_dir = './data/data4/test/'
+trainfile_dir = './data/data2/train/'
+testfile_dir = './data/data2/test/'
 input_name = 'img'
 label_name = 'recmask'
 channel = 3
-# x_train,y_train = dataset.get_data(trainfile_dir, input_name, label_name)
-# x_test,y_test = dataset.get_data(testfile_dir, input_name, label_name)
+x_train,y_train = dataset.get_data(trainfile_dir, input_name, label_name)
+x_test,y_test = dataset.get_data(testfile_dir, input_name, label_name)
 ####
-x_train,y_train = dataset.get_data(trainfile_dir, input_name, label_name,sample_num=10,is_test=True)
-x_test,y_test = dataset.get_data(testfile_dir, input_name, label_name,sample_num=148,is_test=True)
+# x_train,y_train = dataset.get_data(trainfile_dir, input_name, label_name,sample_num=100,is_test=True)
+# x_test,y_test = dataset.get_data(testfile_dir, input_name, label_name,sample_num=1,is_test=True)
 
 #####原图
 y_test = y_test/255
@@ -37,6 +40,7 @@ y_train = y_train/255
 channel = 1
 x_train = np.expand_dims(x_train,-1)
 x_test = np.expand_dims(x_test,-1)
+
 ## 1 归一化到0，255的数据
 # x_train = x_train/255
 # y_train = y_train/255
@@ -57,9 +61,11 @@ def train():
     # dropout_value = tf.placeholder(tf.float32)  # 参与节点的数目百分比
 
     y = U_net.inference(x)
-    loss = tf.reduce_mean(tf.square(y - y_))
-    # dice = evalu.dice_coef_theoretical(y,y_)
-    # loss = tf.abs(1-dice)
+    # loss = tf.reduce_mean(tf.square(y - y_))
+    y_pred = tf.nn.sigmoid(y)
+    loss = 1 - losses.dice_coe(y_pred, y_)
+    # dice = evalu.dice_coef_theoretical(y_pred,y_)
+    # loss = tf.abs(1 - dice)
     summary_op = tf.summary.scalar('trainloss', loss)
     summary_op2 = tf.summary.scalar('testloss', loss)
     batch_norm_updates_op = tf.group(*tf.get_collection(tf.GraphKeys.UPDATE_OPS))
@@ -108,28 +114,29 @@ def test():
     ###------------------数据集
     # correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
     # accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-    savepath = 'E:\code\segment\libSaveNet\save_unet3\conv_unet69999.ckpt-done'
+    savepath = 'E:\code\segment\libSaveNet\save_unet\conv_unet79999.ckpt-done'
     x = tf.placeholder(tf.float32,shape = [1,1024,1024, channel])
     y_ = tf.placeholder(tf.float32,shape = [1,1024,1024,1])
-    y = U_net.inference(x,is_training=False)
+    y = U_net2.inference(x,is_training=False)
     loss = tf.reduce_mean(tf.square(y - y_))
+
     variables_to_restore = []
     for v in tf.global_variables():
         variables_to_restore.append(v)
     saver = tf.train.Saver(variables_to_restore, write_version=tf.train.SaverDef.V2, max_to_keep=None)
     tf.global_variables_initializer().run()
     saver.restore(sess, savepath)
-    # nub = np.shape(x_train)[0]
-    nub = np.shape(x_test)[0]
+    nub = np.shape(x_train)[0]
+    # nub = np.shape(x_test)[0]
      # mub = np.random.randint(0,nub,10)
     predicList = []
     ycList = []
-    for i in range(21,nub):
-        i = 43
-        # inputTest = x_train[i:i+1,:,:,:]
-        # labelTest = y_train[i:i+1,:,:,:]
-        inputTest = x_test[i:i + 1, :, :, :]
-        labelTest = y_test[i:i + 1, :, :, :]
+    for i in range(nub):
+        # i = 23
+        inputTest = x_train[i:i+1,:,:,:]
+        labelTest = y_train[i:i+1,:,:,:]
+        # inputTest = x_test[i:i + 1, :, :, :]
+        # labelTest = y_test[i:i + 1, :, :, :]
 
         # ###  原图
         # img = read.load('E:\code\segment-pr\picture\A_75_LI_1498537683_563000_UNPROCESSED_IBRST_00')
@@ -144,10 +151,10 @@ def test():
         output = sess.run(y,feed_dict={x: inputTest})
         loss_test = sess.run(loss, feed_dict={x: inputTest, y_: labelTest})
 
-        ##原始
-        # out = np.squeeze(output).astype(np.uint8)
-        # label = np.squeeze(labelTest).astype(np.uint8)
-        # img = np.squeeze(inputTest).astype(np.uint8)
+        ##png
+        out = np.squeeze(output).astype(np.uint8)
+        label = np.squeeze(labelTest).astype(np.uint8)
+        img = np.squeeze(inputTest).astype(np.uint8)
 
         ## 1 归一化到0，255的数据
         # img = (np.squeeze(inputTest)*255).astype(np.uint8)
@@ -161,10 +168,10 @@ def test():
         # out = out*255
         # label = (np.squeeze(labelTest)*255).astype(np.uint8)
         ## 3 映射到0，1的数据
-        img = ((np.squeeze(inputTest))*255).astype(np.uint8)
-        out = np.squeeze(output).astype(np.uint8)
-        out = out*255
-        label = (np.squeeze(labelTest)*255).astype(np.uint8)
+        # img = ((np.squeeze(inputTest))*255).astype(np.uint8)
+        # out = np.squeeze(output).astype(np.uint8)
+        # out = out*255
+        # label = (np.squeeze(labelTest)*255).astype(np.uint8)
 
         kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))  # 定义结构元素
         outclosing = cv.morphologyEx(out, cv.MORPH_CLOSE, kernel)  # 闭运算
@@ -198,5 +205,5 @@ def test():
     print(precision)
 
 if __name__ == '__main__':
-    # train()
-    test()
+    train()
+    # test()
