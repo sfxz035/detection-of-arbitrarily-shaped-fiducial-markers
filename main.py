@@ -3,16 +3,11 @@ import os
 import numpy as np
 import dataset
 import networks.U_net as U_net
-import networks.U_net2 as U_net2
-
-from sklearn import metrics
-import matplotlib.pyplot as plt
-import scipy.io as sio
 import cv2 as cv
 from utils import losses
 from utils import evalu
 from utils import postproce
-# import parxml.read as read
+
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'   #指定第一块GPU可用
 config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.9  # 程序最多只能占用指定gpu50%的显存
@@ -27,45 +22,24 @@ trainfile_dir = './data/data2/train/'
 testfile_dir = './data/data2/test/'
 input_name = 'img'
 label_name = 'recmask'
-channel = 3
+channel = 1
 x_train,y_train = dataset.get_data(trainfile_dir, input_name, label_name)
 x_test,y_test = dataset.get_data(testfile_dir, input_name, label_name)
-####
-# x_train,y_train = dataset.get_data(trainfile_dir, input_name, label_name,sample_num=100,is_test=True)
-# x_test,y_test = dataset.get_data(testfile_dir, input_name, label_name,sample_num=1,is_test=True)
 
 #####原图
-y_test = y_test/255
-y_train = y_train/255
-channel = 1
-x_train = np.expand_dims(x_train,-1)
-x_test = np.expand_dims(x_test,-1)
-
-## 1 归一化到0，255的数据
-# x_train = x_train/255
-# y_train = y_train/255
-# x_test = x_test/255
-# y_test = y_test/255
-## 2 标准化并截取到-0.75，0.75的数据
-# x_train = (x_train+0.75)/1.5
-# x_test = (x_test+0.75)/1.5
-## 3 原图直接映射到0，1的数据
-
-
 y_train = np.expand_dims(y_train,-1)
 y_test = np.expand_dims(y_test,-1)
+
+
+
 def train():
     x = tf.placeholder(tf.float32,shape = [batch_size,1024,1024, channel])
     y_ = tf.placeholder(tf.float32,shape = [batch_size,1024,1024,1])
-    # is_training = tf.placeholder(tf.bool)
-    # dropout_value = tf.placeholder(tf.float32)  # 参与节点的数目百分比
 
-    y = U_net.inference(x)
-    # loss = tf.reduce_mean(tf.square(y - y_))
+
+    y = U_net.H_DenseUnet(x,grow_date=32)
     y_pred = tf.nn.sigmoid(y)
-    loss = 1 - losses.dice_coe(y_pred, y_)
-    # dice = evalu.dice_coef_theoretical(y_pred,y_)
-    # loss = tf.abs(1 - dice)
+    loss = losses.mixedLoss(y_pred, y_,alpha=0.5)
     summary_op = tf.summary.scalar('trainloss', loss)
     summary_op2 = tf.summary.scalar('testloss', loss)
     batch_norm_updates_op = tf.group(*tf.get_collection(tf.GraphKeys.UPDATE_OPS))
@@ -117,7 +91,7 @@ def test():
     savepath = 'E:\code\segment\libSaveNet\save_unet\conv_unet79999.ckpt-done'
     x = tf.placeholder(tf.float32,shape = [1,1024,1024, channel])
     y_ = tf.placeholder(tf.float32,shape = [1,1024,1024,1])
-    y = U_net2.inference(x,is_training=False)
+    y = U_net.inference(x,is_training=False)
     loss = tf.reduce_mean(tf.square(y - y_))
 
     variables_to_restore = []
@@ -127,51 +101,23 @@ def test():
     tf.global_variables_initializer().run()
     saver.restore(sess, savepath)
     nub = np.shape(x_train)[0]
-    # nub = np.shape(x_test)[0]
-     # mub = np.random.randint(0,nub,10)
     predicList = []
     ycList = []
     for i in range(nub):
-        # i = 23
-        inputTest = x_train[i:i+1,:,:,:]
-        labelTest = y_train[i:i+1,:,:,:]
-        # inputTest = x_test[i:i + 1, :, :, :]
-        # labelTest = y_test[i:i + 1, :, :, :]
+        inputTrain = x_train[i:i+1,:,:,:]
+        labelTrain = y_train[i:i+1,:,:,:]
+        inputTest = x_test[i:i+1,:,:,:]
+        labelTest = y_test[i:i+1,:,:,:]
 
-        # ###  原图
-        # img = read.load('E:\code\segment-pr\picture\A_75_LI_1498537683_563000_UNPROCESSED_IBRST_00')
-        # img = cv.flip(img, 0, dst=None)
-        #
-        # ## 1 归一化到0，255的数据
-        # # image= img/255
-        # ## 2 截取到-0.75，0.75区间的数据
-        # img = np.expand_dims(img, -1)
-        # inputTest = np.expand_dims(img, 0)
 
         output = sess.run(y,feed_dict={x: inputTest})
         loss_test = sess.run(loss, feed_dict={x: inputTest, y_: labelTest})
 
-        ##png
+        ## 映射到0，1的数据
+        img = ((np.squeeze(inputTest))*255).astype(np.uint8)
         out = np.squeeze(output).astype(np.uint8)
-        label = np.squeeze(labelTest).astype(np.uint8)
-        img = np.squeeze(inputTest).astype(np.uint8)
-
-        ## 1 归一化到0，255的数据
-        # img = (np.squeeze(inputTest)*255).astype(np.uint8)
-        # out = np.squeeze(output).astype(np.uint8)
-        # out = out * 255
-        # label = (np.squeeze(labelTest)*255).astype(np.uint8)
-
-        ## 2 截取到-0.75，0.75区间的数据
-        # img = ((np.squeeze(inputTest)+0.75)/1.5*255).astype(np.uint8)
-        # out = np.squeeze(output).astype(np.uint8)
-        # out = out*255
-        # label = (np.squeeze(labelTest)*255).astype(np.uint8)
-        ## 3 映射到0，1的数据
-        # img = ((np.squeeze(inputTest))*255).astype(np.uint8)
-        # out = np.squeeze(output).astype(np.uint8)
-        # out = out*255
-        # label = (np.squeeze(labelTest)*255).astype(np.uint8)
+        out = out*255
+        label = (np.squeeze(labelTest)*255).astype(np.uint8)
 
         kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))  # 定义结构元素
         outclosing = cv.morphologyEx(out, cv.MORPH_CLOSE, kernel)  # 闭运算

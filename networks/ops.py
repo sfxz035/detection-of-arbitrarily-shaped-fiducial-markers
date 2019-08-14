@@ -109,3 +109,23 @@ def Deconv2d_bn(
         else:
             return batch_norm
 
+def Denseblock(x,nb_layers,grow_date,is_training=True,name='dense_block'):
+    with tf.variable_scope(name):
+        concat_feat = x
+        for i in range(nb_layers):
+            # 1x1 Convolution (Bottleneck layer)
+            x = ReLU(conv_bn(x,grow_date*4,k_h = 1, k_w = 1,is_train=is_training,name='conv1'+str(i+1)),name='ReLU1'+str(i+1))
+
+            # 3x3 Convolution
+            x = ReLU(conv_bn(x,grow_date,is_train=is_training,name='conv2'+str(i+1)),name='ReLU2'+str(i+1))
+            concat_feat = tf.concat((concat_feat,x),-1)
+        return concat_feat
+
+def transition_block(x, compression=0.5,is_training=True, name='tran_block'):
+    with tf.variable_scope(name):
+        features = x.get_shape()[-1]
+        x = ReLU(conv_bn(x, int(int(features)*compression), k_h=1, k_w=1, is_train=is_training, name='conv_trans'),
+                 name='ReLU_trans')
+        x = tf.nn.avg_pool(x, [1, 2, 2, 1], [1, 2, 2, 1], padding = 'SAME',name = 'AvgPooling')
+        return x
+
