@@ -56,7 +56,7 @@ def conv_relu(inpt, output_dim, k_h = 3, k_w = 3, strides = [1, 1, 1, 1],name='C
         return out
 
 
-def conv(inpt, output_dim, k_h = 3, k_w = 3, strides = [1, 1, 1, 1],name='Conv2d'):
+def conv_b(inpt, output_dim, k_h = 3, k_w = 3, strides = [1, 1, 1, 1],name='Conv2d'):
     with tf.variable_scope(name):
         filter_ = weight_variable([k_h, k_w, inpt.get_shape()[-1], output_dim],name='weights')
         conv = tf.nn.conv2d(inpt, filter=filter_, strides=strides, padding="SAME")
@@ -129,3 +129,26 @@ def transition_block(x, compression=0.5,is_training=True, name='tran_block'):
         x = tf.nn.avg_pool(x, [1, 2, 2, 1], [1, 2, 2, 1], padding = 'SAME',name = 'AvgPooling')
         return x
 
+def GC_Block(net,ration=16,softmax=True,is_training=True,name='NonLocal'):
+    with tf.variable_scope(name):
+        input_shape = net.get_shape().as_list()
+        a = conv_b(net,1,1,1,name='embA')
+        g_orig = g = net
+    # Flatten from (B,H,W,C) to (B,HW,C) or similar
+        if softmax:
+            f = tf.nn.softmax(a)
+        else:
+            f = a / tf.cast(tf.shape(a)[-1], tf.float32)
+        f_flat = tf.reshape(f, [tf.shape(f)[0], -1, tf.shape(f)[-1]])
+        g_flat = tf.reshape(g, [tf.shape(g)[0], -1, tf.shape(g)[-1]])
+        f_flat.set_shape([a.shape[0], a.shape[1] * a.shape[2] if None not in a.shape[1:3] else None, a.shape[-1]])
+        g_flat.set_shape([g.shape[0], g.shape[1] * g.shape[2] if None not in g.shape[1:3] else None, g.shape[-1]])
+
+        # Compute f * g ("self-attention") -> (B,HW,C)
+        fg = tf.matmul(tf.transpose(f_flat, [0, 2, 1]), g_flat)
+        # Expand and fix the static shapes TF lost track of.
+        fg = tf.expand_dims(fg, 1)
+        fg = conv_bn(fg,input_shape[-1]/ration,1,1,is_train=is_training,name='bottleneck')
+        fg = conv_b(fg,input_shape[-1],1,1,name='transform')
+        res = fg + net
+        return res

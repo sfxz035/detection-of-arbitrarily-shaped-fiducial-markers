@@ -47,7 +47,7 @@ def inference(images,is_training=True,reuse = False,name='UNet'):
         L1_U3 = ReLU(conv_bn(L1_U2, FILTER_DIM, k_h=3, is_train=is_training,name='Conv1d_1_u2'),name='ReLU_1_u2')
 
         conv1 = ReLU(conv_bn(L1_U3, 2, k_h=3, is_train=is_training,name='Conv2d_1'),name='ReLU_1')
-        out = conv(conv1, OUTPUT_C,name='Conv1d_out')
+        out = conv_b(conv1, OUTPUT_C,name='Conv1d_out')
 
     # variables = tf.contrib.framework.get_variables(name)
 
@@ -57,7 +57,9 @@ def H_DenseUnet(images,grow_date=32,compression=0.5,is_training=True,reuse = Fal
     with tf.variable_scope(name, reuse=reuse):
         nb_layers = [6,12,36,24]
         L1_1 = ReLU(conv_bn(images, FILTER_DIM,is_train=is_training, name='Conv2d_1_1'),name='ReLU_1_1')
-        L1_2 = ReLU(conv_bn(images, FILTER_DIM,is_train=is_training, name='Conv2d_1_2'),name='ReLU_1_2')
+        L1_1 = GC_Block(L1_1, 1, is_training=is_training, name='GC_block1')
+        L1_2 = ReLU(conv_bn(L1_1, FILTER_DIM,is_train=is_training, name='Conv2d_1_2'),name='ReLU_1_2')
+        L1_2 = GC_Block(L1_2, 1, is_training=is_training, name='GC_block2')
         L2_1 = tf.nn.max_pool(L1_2, [1, 2, 2, 1], [1, 2, 2, 1], padding = 'SAME',name = 'MaxPooling1')  ##
 
         L2_d = Denseblock(L2_1,nb_layers[0],grow_date=grow_date,is_training=is_training,name='dense_block1')
@@ -70,7 +72,7 @@ def H_DenseUnet(images,grow_date=32,compression=0.5,is_training=True,reuse = Fal
         L4_t = transition_block(L4_d,compression=compression,is_training=is_training,name='trans_block3')
 
         L5_d = Denseblock(L4_t,nb_layers[3],grow_date=grow_date,is_training=is_training,name='dense_block4')
-
+        L5_d = GC_Block(L5_d,is_training=is_training, name='GC_block5')
         shape_list2,shape_list3,shape_list4 = L2_d.get_shape().as_list(),L3_d.get_shape().as_list(),L4_d.get_shape().as_list()
 
         L4_U1 = ReLU(Deconv2d_bn(L5_d, shape_list4,k_h = 3,is_train=is_training,name = 'Deconv2d4'),name='DeReLU4')
@@ -91,9 +93,11 @@ def H_DenseUnet(images,grow_date=32,compression=0.5,is_training=True,reuse = Fal
         L1_U1 = ReLU(Deconv2d_bn(L2_U2, L1_2.get_shape().as_list(),k_h = 3,is_train=is_training,name = 'Deconv2d1'),name='DeReLU1')
         L1_U1 = tf.concat((L1_2, L1_U1), -1)
         L1_U2 = ReLU(conv_bn(L1_U1, FILTER_DIM, k_h=3, is_train=is_training,name='Conv1d_1_u1'),name='ReLU_1_u1')
+        L1_U2 = GC_Block(L1_U2,is_training=is_training, name='GC_block_L1U')
         L1_U3 = ReLU(conv_bn(L1_U2, FILTER_DIM, k_h=3, is_train=is_training,name='Conv1d_1_u2'),name='ReLU_1_u2')
+        L1_U3 = GC_Block(L1_U3,is_training=is_training, name='GC_block_L1U2')
 
-        out = ReLU(conv_bn(L1_U3,1,k_w=1,k_h=1,is_train=is_training, name='Conv2d_out'),name='ReLU_out')
+        out = conv_bn(L1_U3,1,k_w=1,k_h=1,is_train=is_training, name='Conv2d_out')
         return out
 
 
